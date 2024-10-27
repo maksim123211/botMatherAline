@@ -1,0 +1,11 @@
+{
+  "ExpandedNodes": [
+    "",
+    "\\app",
+    "\\app\\bot",
+    "\\app\\bot\\commands",
+    "\\tgbot"
+  ],
+  "SelectedNode": "\\app\\bot\\commands\\shopping_cart.py",
+  "PreviewInSolutionExplorer": false
+}
