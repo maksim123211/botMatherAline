@@ -14,12 +14,12 @@ async def store_menu(user):
     categories = Category.objects.all()
 
     if categories is not None:
-        await user.reply('Категории продукции:', keyboard=IKM(inline_keyboard=[
+        await user.reply('📔 Категории продукции:', keyboard=IKM(inline_keyboard=[
             [IKB('{}'.format(category.name),
                  callback_data=f'category_select {category.id}')] for category in categories
         ]))
     else:
-        await user.reply('В данный момент продукция отсутствует!')
+        await user.reply('❌ В данный момент продукция отсутствует!')
 
 
 @handler.callback(name='back_store', dialog=Account.Dialog.DEFAULT)
@@ -34,12 +34,12 @@ async def _(callback, path_args, bot, user):
     category = Category.objects.filter(id=path_args[1]).first()
     products = Product.objects.filter(category=category).all()
     if products:
-        await user.reply(f'Товары в категории {category.name}:', keyboard=IKM(inline_keyboard=[
+        await user.reply(f'👜 Товары в категории {category.name}:', keyboard=IKM(inline_keyboard=[
             [IKB('{}'.format(product.name),
                  callback_data=f'product_select {product.id}')] for product in products] +
                 [[IKB('◀️ Назад', callback_data='back_store')]]))
     else:
-        await user.reply(f"На данный момент товары в категории {category.name} отсутствуют",
+        await user.reply(f"❌ На данный момент товары в категории {category.name} отсутствуют",
                          keyboard=IKM(inline_keyboard=[[IKB('◀️ Назад', callback_data='back_store')]]))
 
 
@@ -120,15 +120,15 @@ async def _(callback, path_args, bot, user):
 
 
 async def create_and_update_order_with_count(path_args, bot, user):
-    order = Order.objects.filter(status=Order.STATUS_NEW or Order.STATUS_IN_PROGRESS).first()
-    part_of_the_order = OrderItem.objects.filter(id=int(path_args[2])).first()
+    order = Order.objects.filter(status=Order.STATUS_NEW or Order.STATUS_IN_PROGRESS, user=user).first()
+    part_of_the_order = OrderItem.objects.filter(id=int(path_args[2]), buyer=user).first()
 
     if part_of_the_order is not None:
         part_of_the_order.quantity = int(path_args[1])
         part_of_the_order.price = part_of_the_order.product.price * int(path_args[1])
         part_of_the_order.save()
 
-        await user.reply(f"Продукт: {part_of_the_order} успешно изменен!")
+        await user.reply(f"✅ Продукт: {part_of_the_order} успешно изменен!")
     else:
         product = Product.objects.filter(id=int(path_args[2])).first()
         if order is None:
