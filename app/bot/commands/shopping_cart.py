@@ -45,8 +45,10 @@ async def _(callback, path_args, bot, user):
 async def _(callback, path_args, bot, user):
     await callback.message.delete()
     order = Order.objects.get(id=int(path_args[1]))
+    moscow_tz = pytz.timezone('Europe/Moscow')
+    moscow_time = timezone.now().astimezone(moscow_tz)
 
-    await user.reply(f'⚙️ Детальная информация по заказу:\n\n{order.items_name}\n💷 Итоговая сумма: {order.total_price}\n📅 Дата оплаты: {order.updated_at.strftime("%d.%m.%Y %H:%M")}', keyboard=IKM(inline_keyboard=[
+    await user.reply(f'⚙️ Детальная информация по заказу:\n\n{order.items_name}\n💷 Итоговая сумма: {order.total_price} рублей\n📅 Дата оплаты: {order.updated_at.astimezone(moscow_tz).strftime("%d.%m.%Y %H:%M")}', keyboard=IKM(inline_keyboard=[
         [IKB('◀️ Назад', callback_data='archive_order')]
         ]))
 
@@ -71,8 +73,8 @@ async def _(callback, path_args, bot, user):
 @handler.callback(name='create_an_order', dialog=Account.Dialog.DEFAULT)
 async def _(callback, path_args, bot, user):
     await callback.message.delete()
-    order = Order.objects.filter(id=int(path_args[1])).first()
-    order_items = OrderItem.objects.filter(order=order.id)
+    order = Order.objects.get(id=int(path_args[1]))
+    order_items = OrderItem.objects.filter(order__id=order.id)
     total_price = order_items.aggregate(total=Sum('price'))['total']
     order.total_price = total_price
     order.status = Order.STATUS_IN_PROGRESS
