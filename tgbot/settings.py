@@ -109,7 +109,8 @@ DEFAULT_AUTO_FIELD = 'django.db.models.AutoField'
 
 LANGUAGE_CODE = 'ru'
 
-TIME_ZONE = 'Europe/Istanbul'
+TIME_ZONE = 'Europe/Moscow'
+USE_TZ = True
 
 USE_I18N = True
 

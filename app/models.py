@@ -85,6 +85,8 @@ class AboutCompany(models.Model):
     description = models.TextField(verbose_name='Описание', blank=False)
     manager = models.TextField(verbose_name="Ссылка менеджера", blank=False)
     image = models.ImageField(upload_to=settings.MEDIA_ROOT, default=None, null=True, blank=False, verbose_name='Фото организации')
+    receiving_address = models.TextField(verbose_name='Адрес самовывоза', blank=True)
+    payment_details = models.TextField(verbose_name='Реквизиты для оплаты заказа', blank=True)
 
 
 class Order(models.Model):
@@ -102,8 +104,19 @@ class Order(models.Model):
         (STATUS_COMPLETED, _('Оплачен')),
     )
 
+    RECEIVING_POINT = 'receiving_point'
+    DELIVERY = 'delivery'
+
+    TYPE_RECEIVING = (
+        (RECEIVING_POINT, _('Самовывоз')),
+        (DELIVERY, _('Доставка')),
+    )
+
     user = models.ForeignKey(Account, on_delete=models.CASCADE, verbose_name=_('Покупатель'))
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_NEW, verbose_name=_('Статус заказа'))
+    receiving = models.CharField(max_length=30, choices=TYPE_RECEIVING, default=RECEIVING_POINT, verbose_name=_('Способ получения'))
+    total_price = models.DecimalField(max_digits=10, decimal_places=2, verbose_name='Полная стоимость заказа', default=0)
+    items_name = models.TextField(verbose_name='Название продуктов заказе', blank=False, default="")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name=_('Дата создания'))
     updated_at = models.DateTimeField(auto_now=True, verbose_name=_('Дата последнего обновления'))
 

@@ -4,6 +4,9 @@ from app.models import Account, Product, Category, Order, OrderItem
 from aiogram.types import CallbackQuery
 from aiogram.types import InlineKeyboardMarkup as IKM, InlineKeyboardButton as IKB
 
+from django.core.exceptions import ObjectDoesNotExist
+from django.db.models import Q
+
 
 @handler.message(name='🏪 Магазин', dialog=Account.Dialog.DEFAULT)
 async def _(message, path_args, bot, user):
@@ -14,12 +17,12 @@ async def store_menu(user):
     categories = Category.objects.all()
 
     if categories is not None:
-        await user.reply('Категории продукции:', keyboard=IKM(inline_keyboard=[
+        await user.reply('📔 Категории продукции:', keyboard=IKM(inline_keyboard=[
             [IKB('{}'.format(category.name),
                  callback_data=f'category_select {category.id}')] for category in categories
         ]))
     else:
-        await user.reply('В данный момент продукция отсутствует!')
+        await user.reply('❌ В данный момент продукция отсутствует!')
 
 
 @handler.callback(name='back_store', dialog=Account.Dialog.DEFAULT)
@@ -34,12 +37,12 @@ async def _(callback, path_args, bot, user):
     category = Category.objects.filter(id=path_args[1]).first()
     products = Product.objects.filter(category=category).all()
     if products:
-        await user.reply(f'Товары в категории {category.name}:', keyboard=IKM(inline_keyboard=[
+        await user.reply(f'👜 Товары в категории {category.name}:', keyboard=IKM(inline_keyboard=[
             [IKB('{}'.format(product.name),
                  callback_data=f'product_select {product.id}')] for product in products] +
                 [[IKB('◀️ Назад', callback_data='back_store')]]))
     else:
-        await user.reply(f"На данный момент товары в категории {category.name} отсутствуют",
+        await user.reply(f"❌ На данный момент товары в категории {category.name} отсутствуют",
                          keyboard=IKM(inline_keyboard=[[IKB('◀️ Назад', callback_data='back_store')]]))
 
 
@@ -120,30 +123,44 @@ async def _(callback, path_args, bot, user):
 
 
 async def create_and_update_order_with_count(path_args, bot, user):
-    order = Order.objects.filter(status=Order.STATUS_NEW or Order.STATUS_IN_PROGRESS).first()
-    part_of_the_order = OrderItem.objects.filter(id=int(path_args[2])).first()
+    product_id = int(path_args[2])
+    quantity = int(path_args[1])
 
-    if part_of_the_order is not None:
-        part_of_the_order.quantity = int(path_args[1])
-        part_of_the_order.price = part_of_the_order.product.price * int(path_args[1])
+    try:
+        order = Order.objects.filter(
+            Q(status=Order.STATUS_NEW) | Q(status=Order.STATUS_IN_PROGRESS),
+            user=user
+        ).first()
+
+        part_of_the_order = OrderItem.objects.get(id=product_id, buyer=user)
+
+        part_of_the_order.quantity = quantity
+        part_of_the_order.price = calculate_price(part_of_the_order.product.price, quantity)
         part_of_the_order.save()
 
-        await user.reply(f"Продукт: {part_of_the_order} успешно изменен!")
-    else:
-        product = Product.objects.filter(id=int(path_args[2])).first()
+        await user.reply(f"✅ Продукт: {part_of_the_order} успешно изменен!")
+
+    except ObjectDoesNotExist:
+        product = Product.objects.filter(id=product_id).first()
+        if product is None:
+            await user.reply("❌ Продукт не найден!")
+            return
+
         if order is None:
-            order = Order(
-                user=user
-            )
+            order = Order(user=user)
             order.save()
 
         order_item = OrderItem(
             product=product,
             order=order,
             buyer=user,
-            quantity=int(path_args[1]),
-            price=product.price * int(path_args[1]),
+            quantity=quantity,
+            price=calculate_price(product.price, quantity),
         )
         order_item.save()
 
         await user.return_the_keyboard(f"✅ Продукт: {order_item} успешно добавлен в корзину!")
+
+
+def calculate_price(unit_price, quantity):
+    return unit_price * quantity
